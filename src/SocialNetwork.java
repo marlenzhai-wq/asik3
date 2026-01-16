@@ -1,24 +1,46 @@
+import java.util.ArrayList;
+
 public class SocialNetwork {
     private String name;
-    private int totalUsers;
 
-    public SocialNetwork(String name, int totalUsers) {
+    private ArrayList<User> users = new ArrayList<>();
+    private ArrayList<Post> posts = new ArrayList<>();
+    private ArrayList<Comment> comments = new ArrayList<>();
+
+    public SocialNetwork(String name) {
         this.name = name;
-        this.totalUsers = totalUsers;
     }
 
-    public String getName() { return name; }
-    public int getTotalUsers() { return totalUsers; }
-
-    public void setName(String name) { this.name = name; }
-    public void setTotalUsers(int totalUsers) { this.totalUsers = totalUsers; }
-
-    public void registerUser() {
-        this.totalUsers++;
+    // Add methods
+    public void addUser(User u) {
+        users.add(u);
     }
 
-    @Override
-    public String toString() {
-        return "SocialNetwork{name='" + name + "', totalUsers=" + totalUsers + "}";
+    public void addPost(Post p) {
+        posts.add(p);
+    }
+
+    public void addComment(Comment c) {
+        comments.add(c);
+    }
+
+    // Print everything
+    public void printAll() {
+        System.out.println("=== Social Network: " + name + " ===");
+
+        System.out.println("\nUSERS:");
+        for (User u : users) {
+            System.out.println(u);
+        }
+
+        System.out.println("\nPOSTS:");
+        for (Post p : posts) {
+            System.out.println(p);
+        }
+
+        System.out.println("\nCOMMENTS:");
+        for (Comment c : comments) {
+            System.out.println(c);
+        }
     }
 }

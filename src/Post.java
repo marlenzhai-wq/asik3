@@ -1,26 +1,49 @@
 import java.util.Objects;
 
 public class Post {
+    private int postId;
     private String content;
-    private String authorUsername;
     private int likes;
+    private int userId; // author id
 
-    public Post(String content, String authorUsername, int likes) {
+    public Post(int postId, String content, int likes, int userId) {
+        this.postId = postId;
         this.content = content;
-        this.authorUsername = authorUsername;
+        this.likes = likes;
+        this.userId = userId;
+    }
+
+    public int getPostId() {
+        return postId;
+    }
+
+    public String getContent() {
+        return content;
+    }
+
+    public int getLikes() {
+        return likes;
+    }
+
+    public int getUserId() {
+        return userId;
+    }
+
+    public void setContent(String content) {
+        this.content = content;
+    }
+
+    public void setLikes(int likes) {
         this.likes = likes;
     }
 
-    public String getContent() { return content; }
-    public String getAuthorUsername() { return authorUsername; }
-    public int getLikes() { return likes; }
-
-    public void setContent(String content) { this.content = content; }
-    public void setAuthorUsername(String authorUsername) { this.authorUsername = authorUsername; }
-    public void setLikes(int likes) { this.likes = likes; }
-
     public void like() {
         this.likes++;
+    }
+
+    public void printInfo() {
+        System.out.println("Post{id=" + postId + ", userId=" + userId +
+                ", content='" + content + "', likes=" + likes + "}");
     }
 
     public boolean hasMoreLikesThan(Post other) {
@@ -29,7 +52,8 @@ public class Post {
 
     @Override
     public String toString() {
-        return "Post{author='" + authorUsername + "', content='" + content + "', likes=" + likes + "}";
+        return "Post{id=" + postId + ", userId=" + userId +
+                ", content='" + content + "', likes=" + likes + "}";
     }
 
     @Override
@@ -37,12 +61,11 @@ public class Post {
         if (this == o) return true;
         if (!(o instanceof Post)) return false;
         Post post = (Post) o;
-        return Objects.equals(content, post.content) &&
-                Objects.equals(authorUsername, post.authorUsername);
+        return postId == post.postId;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(content, authorUsername);
+        return Objects.hash(postId);
     }
 }

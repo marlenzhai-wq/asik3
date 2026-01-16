@@ -1,52 +1,170 @@
+import java.sql.*;
+
 public class Main {
     public static void main(String[] args) {
 
-        SocialNetwork sn = new SocialNetwork("MySocialApp");
+        try (Connection con = DBUtil.connect()) {
+            System.out.println("✅ Connected to PostgreSQL!");
 
-        // Users (сендегі таблица бойынша)
-        User u1 = new User(1, "Marlen1280");
-        User u2 = new User(2, "Dastan01");
-        User u3 = new User(3, "Serik");
+            // --------- WRITE (INSERT) ----------
+            int newUserId = insertUser(con, "TestUser99");
+            int newPostId = insertPost(con, newUserId, "This post was inserted from Java", 0);
+            int newCommentId = insertComment(con, newPostId, newUserId, "Nice!");
 
-        sn.addUser(u1);
-        sn.addUser(u2);
-        sn.addUser(u3);
+            // --------- READ (SELECT) ----------
+            System.out.println("\n=== USERS ===");
+            printUsers(con);
 
-        // Posts (сендегі таблица бойынша)
-        Post p1 = new Post(1, "Hello World!", 3, 1);
-        Post p2 = new Post(2, "My first day at the University", 2, 2);
-        Post p3 = new Post(3, "Today I went for a walk", 0, 3);
+            System.out.println("\n=== POSTS ===");
+            printPosts(con);
 
-        sn.addPost(p1);
-        sn.addPost(p2);
-        sn.addPost(p3);
+            System.out.println("\n=== COMMENTS ===");
+            printComments(con);
 
-        // Comments (сендегі таблица бойынша)
-        Comment c1 = new Comment(1, "Hi", 1, 2);
-        Comment c2 = new Comment(2, "Hello", 1, 3);
-        Comment c3 = new Comment(3, "Good luck", 2, 1);
-        Comment c4 = new Comment(4, "Great", 3, 2);
+            // --------- UPDATE ----------
+            System.out.println("\n=== UPDATE ===");
+            updatePostLikes(con, newPostId, 10);
+            updateCommentText(con, newCommentId, "Updated comment from Java!");
 
-        sn.addComment(c1);
-        sn.addComment(c2);
-        sn.addComment(c3);
-        sn.addComment(c4);
+            // --------- DELETE ----------
+            System.out.println("\n=== DELETE ===");
+            deleteComment(con, newCommentId);
+            deletePost(con, newPostId);
+            deleteUser(con, newUserId); // user өшсе, өз пост/коммент бар болса FK-ға байланысты қате болуы мүмкін
 
-        // Print
-        sn.printAll();
+            // қайта оқу
+            System.out.println("\n=== AFTER CHANGES ===");
+            printUsers(con);
+            printPosts(con);
+            printComments(con);
 
-        // Compare objects
-        System.out.println("\n=== COMPARISON ===");
-        System.out.println("Post 1 has more likes than Post 2? " + p1.hasMoreLikesThan(p2));
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
 
-        System.out.println("User1 equals User2? " + u1.equals(u2));
+    // ---------------- USERS ----------------
+    static int insertUser(Connection con, String username) throws SQLException {
+        String sql = "INSERT INTO users(username) VALUES (?) RETURNING user_id";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, username);
+            ResultSet rs = ps.executeQuery();
+            rs.next();
+            System.out.println("Inserted user: " + username);
+            return rs.getInt(1);
+        }
+    }
 
-        // Update with setters
-        System.out.println("\n=== UPDATE USING SETTER ===");
-        u1.setUsername("MarlenNewName");
-        p3.like(); // likes +1
+    static void printUsers(Connection con) throws SQLException {
+        String sql = "SELECT user_id, username FROM users ORDER BY user_id";
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                System.out.println(rs.getInt("user_id") + " | " + rs.getString("username"));
+            }
+        }
+    }
 
-        System.out.println(u1);
-        System.out.println(p3);
+    static void deleteUser(Connection con, int userId) throws SQLException {
+        String sql = "DELETE FROM users WHERE user_id = ?";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.executeUpdate();
+            System.out.println("Deleted user id=" + userId);
+        }
+    }
+
+    // ---------------- POSTS ----------------
+    static int insertPost(Connection con, int userId, String content, int likes) throws SQLException {
+        String sql = "INSERT INTO posts(user_id, content, likes) VALUES (?, ?, ?) RETURNING post_id";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, userId);
+            ps.setString(2, content);
+            ps.setInt(3, likes);
+            ResultSet rs = ps.executeQuery();
+            rs.next();
+            System.out.println("Inserted post for user_id=" + userId);
+            return rs.getInt(1);
+        }
+    }
+
+    static void printPosts(Connection con) throws SQLException {
+        String sql = "SELECT post_id, user_id, content, likes FROM posts ORDER BY post_id";
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                System.out.println(
+                        rs.getInt("post_id") + " | user=" + rs.getInt("user_id") +
+                                " | likes=" + rs.getInt("likes") +
+                                " | " + rs.getString("content")
+                );
+            }
+        }
+    }
+
+    static void updatePostLikes(Connection con, int postId, int newLikes) throws SQLException {
+        String sql = "UPDATE posts SET likes = ? WHERE post_id = ?";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, newLikes);
+            ps.setInt(2, postId);
+            ps.executeUpdate();
+            System.out.println("Updated likes for post_id=" + postId);
+        }
+    }
+
+    static void deletePost(Connection con, int postId) throws SQLException {
+        String sql = "DELETE FROM posts WHERE post_id = ?";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, postId);
+            ps.executeUpdate();
+            System.out.println("Deleted post id=" + postId);
+        }
+    }
+
+    // ---------------- COMMENTS ----------------
+    static int insertComment(Connection con, int postId, int userId, String text) throws SQLException {
+        String sql = "INSERT INTO comments(post_id, user_id, comment) VALUES (?, ?, ?) RETURNING comment_id";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, postId);
+            ps.setInt(2, userId);
+            ps.setString(3, text);
+            ResultSet rs = ps.executeQuery();
+            rs.next();
+            System.out.println("Inserted comment for post_id=" + postId);
+            return rs.getInt(1);
+        }
+    }
+
+    static void printComments(Connection con) throws SQLException {
+        String sql = "SELECT comment_id, post_id, user_id, comment FROM comments ORDER BY comment_id";
+        try (Statement st = con.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+            while (rs.next()) {
+                System.out.println(
+                        rs.getInt("comment_id") + " | post=" + rs.getInt("post_id") +
+                                " | user=" + rs.getInt("user_id") +
+                                " | " + rs.getString("comment")
+                );
+            }
+        }
+    }
+
+    static void updateCommentText(Connection con, int commentId, String newText) throws SQLException {
+        String sql = "UPDATE comments SET comment = ? WHERE comment_id = ?";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setString(1, newText);
+            ps.setInt(2, commentId);
+            ps.executeUpdate();
+            System.out.println("Updated comment_id=" + commentId);
+        }
+    }
+
+    static void deleteComment(Connection con, int commentId) throws SQLException {
+        String sql = "DELETE FROM comments WHERE comment_id = ?";
+        try (PreparedStatement ps = con.prepareStatement(sql)) {
+            ps.setInt(1, commentId);
+            ps.executeUpdate();
+            System.out.println("Deleted comment id=" + commentId);
+        }
     }
 }

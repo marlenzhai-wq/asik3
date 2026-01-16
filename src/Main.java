@@ -6,12 +6,10 @@ public class Main {
         try (Connection con = DBUtil.connect()) {
             System.out.println("✅ Connected to PostgreSQL!");
 
-            // --------- WRITE (INSERT) ----------
             int newUserId = insertUser(con, "TestUser99");
             int newPostId = insertPost(con, newUserId, "This post was inserted from Java", 0);
             int newCommentId = insertComment(con, newPostId, newUserId, "Nice!");
 
-            // --------- READ (SELECT) ----------
             System.out.println("\n=== USERS ===");
             printUsers(con);
 
@@ -21,18 +19,15 @@ public class Main {
             System.out.println("\n=== COMMENTS ===");
             printComments(con);
 
-            // --------- UPDATE ----------
             System.out.println("\n=== UPDATE ===");
             updatePostLikes(con, newPostId, 10);
             updateCommentText(con, newCommentId, "Updated comment from Java!");
 
-            // --------- DELETE ----------
             System.out.println("\n=== DELETE ===");
             deleteComment(con, newCommentId);
             deletePost(con, newPostId);
-            deleteUser(con, newUserId); // user өшсе, өз пост/коммент бар болса FK-ға байланысты қате болуы мүмкін
+            deleteUser(con, newUserId);
 
-            // қайта оқу
             System.out.println("\n=== AFTER CHANGES ===");
             printUsers(con);
             printPosts(con);
@@ -43,7 +38,6 @@ public class Main {
         }
     }
 
-    // ---------------- USERS ----------------
     static int insertUser(Connection con, String username) throws SQLException {
         String sql = "INSERT INTO users(username) VALUES (?) RETURNING user_id";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
@@ -74,7 +68,6 @@ public class Main {
         }
     }
 
-    // ---------------- POSTS ----------------
     static int insertPost(Connection con, int userId, String content, int likes) throws SQLException {
         String sql = "INSERT INTO posts(user_id, content, likes) VALUES (?, ?, ?) RETURNING post_id";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
@@ -121,7 +114,6 @@ public class Main {
         }
     }
 
-    // ---------------- COMMENTS ----------------
     static int insertComment(Connection con, int postId, int userId, String text) throws SQLException {
         String sql = "INSERT INTO comments(post_id, user_id, comment) VALUES (?, ?, ?) RETURNING comment_id";
         try (PreparedStatement ps = con.prepareStatement(sql)) {

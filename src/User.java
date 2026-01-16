@@ -30,7 +30,6 @@ public class User {
         return "User{id=" + userId + ", username='" + username + "'}";
     }
 
-    // compare by username
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

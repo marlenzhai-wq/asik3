@@ -1,4 +1,5 @@
 import java.sql.*;
+import java.util.Scanner;
 
 public class Main {
     public static void main(String[] args) {
@@ -6,9 +7,29 @@ public class Main {
         try (Connection con = DBUtil.connect()) {
             System.out.println("✅ Connected to PostgreSQL!");
 
-            int newUserId = insertUser(con, "TestUser99");
-            int newPostId = insertPost(con, newUserId, "This post was inserted from Java", 0);
-            int newCommentId = insertComment(con, newPostId, newUserId, "Nice!");
+            Scanner sc = new Scanner(System.in);
+
+            System.out.print("Enter username: ");
+            String username = sc.nextLine();
+
+            int userId = insertUser(con, username);
+            System.out.println("✅ User inserted with id=" + userId);
+
+            System.out.print("Enter post content: ");
+            String postContent = sc.nextLine();
+
+            System.out.print("Enter likes (number): ");
+            int likes = sc.nextInt();
+            sc.nextLine();
+
+            int postId = insertPost(con, userId, postContent, likes);
+            System.out.println("✅ Post inserted with id=" + postId);
+
+            System.out.print("Enter comment text: ");
+            String commentText = sc.nextLine();
+
+            int commentId = insertComment(con, postId, userId, commentText);
+            System.out.println("✅ Comment inserted with id=" + commentId);
 
             System.out.println("\n=== USERS ===");
             printUsers(con);
@@ -19,19 +40,40 @@ public class Main {
             System.out.println("\n=== COMMENTS ===");
             printComments(con);
 
-            System.out.println("\n=== UPDATE ===");
-            updatePostLikes(con, newPostId, 10);
-            updateCommentText(con, newCommentId, "Updated comment from Java!");
+            System.out.print("\nDo you want to update likes for this post? (yes/no): ");
+            String answer = sc.nextLine();
 
-            System.out.println("\n=== DELETE ===");
-            deleteComment(con, newCommentId);
-            deletePost(con, newPostId);
-            deleteUser(con, newUserId);
+            if (answer.equalsIgnoreCase("yes")) {
+                System.out.print("Enter new likes: ");
+                int newLikes = sc.nextInt();
+                sc.nextLine();
 
-            System.out.println("\n=== AFTER CHANGES ===");
+                updatePostLikes(con, postId, newLikes);
+                System.out.println("✅ Likes updated!");
+
+                System.out.println("\n=== POSTS AFTER UPDATE ===");
+                printPosts(con);
+            }
+
+            System.out.print("\nDo you want to delete inserted data? (yes/no): ");
+            String del = sc.nextLine();
+
+            if (del.equalsIgnoreCase("yes")) {
+                deleteComment(con, commentId);
+                deletePost(con, postId);
+                deleteUser(con, userId);
+
+                System.out.println("🗑️ Deleted inserted user, post and comment.");
+            } else {
+                System.out.println("✅ Data kept in database (not deleted).");
+            }
+
+            System.out.println("\n=== FINAL DATA ===");
             printUsers(con);
             printPosts(con);
             printComments(con);
+
+            System.out.println("\n✅ Done.");
 
         } catch (SQLException e) {
             e.printStackTrace();
@@ -44,7 +86,6 @@ public class Main {
             ps.setString(1, username);
             ResultSet rs = ps.executeQuery();
             rs.next();
-            System.out.println("Inserted user: " + username);
             return rs.getInt(1);
         }
     }
@@ -64,7 +105,6 @@ public class Main {
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, userId);
             ps.executeUpdate();
-            System.out.println("Deleted user id=" + userId);
         }
     }
 
@@ -76,7 +116,6 @@ public class Main {
             ps.setInt(3, likes);
             ResultSet rs = ps.executeQuery();
             rs.next();
-            System.out.println("Inserted post for user_id=" + userId);
             return rs.getInt(1);
         }
     }
@@ -87,7 +126,8 @@ public class Main {
              ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) {
                 System.out.println(
-                        rs.getInt("post_id") + " | user=" + rs.getInt("user_id") +
+                        rs.getInt("post_id") +
+                                " | user_id=" + rs.getInt("user_id") +
                                 " | likes=" + rs.getInt("likes") +
                                 " | " + rs.getString("content")
                 );
@@ -96,12 +136,11 @@ public class Main {
     }
 
     static void updatePostLikes(Connection con, int postId, int newLikes) throws SQLException {
-        String sql = "UPDATE posts SET likes = ? WHERE post_id = ?";
+        String sql = "UPDATE posts SET likes=? WHERE post_id=?";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, newLikes);
             ps.setInt(2, postId);
             ps.executeUpdate();
-            System.out.println("Updated likes for post_id=" + postId);
         }
     }
 
@@ -110,19 +149,17 @@ public class Main {
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, postId);
             ps.executeUpdate();
-            System.out.println("Deleted post id=" + postId);
         }
     }
 
-    static int insertComment(Connection con, int postId, int userId, String text) throws SQLException {
+    static int insertComment(Connection con, int postId, int userId, String commentText) throws SQLException {
         String sql = "INSERT INTO comments(post_id, user_id, comment) VALUES (?, ?, ?) RETURNING comment_id";
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, postId);
             ps.setInt(2, userId);
-            ps.setString(3, text);
+            ps.setString(3, commentText);
             ResultSet rs = ps.executeQuery();
             rs.next();
-            System.out.println("Inserted comment for post_id=" + postId);
             return rs.getInt(1);
         }
     }
@@ -133,21 +170,12 @@ public class Main {
              ResultSet rs = st.executeQuery(sql)) {
             while (rs.next()) {
                 System.out.println(
-                        rs.getInt("comment_id") + " | post=" + rs.getInt("post_id") +
-                                " | user=" + rs.getInt("user_id") +
+                        rs.getInt("comment_id") +
+                                " | post_id=" + rs.getInt("post_id") +
+                                " | user_id=" + rs.getInt("user_id") +
                                 " | " + rs.getString("comment")
                 );
             }
-        }
-    }
-
-    static void updateCommentText(Connection con, int commentId, String newText) throws SQLException {
-        String sql = "UPDATE comments SET comment = ? WHERE comment_id = ?";
-        try (PreparedStatement ps = con.prepareStatement(sql)) {
-            ps.setString(1, newText);
-            ps.setInt(2, commentId);
-            ps.executeUpdate();
-            System.out.println("Updated comment_id=" + commentId);
         }
     }
 
@@ -156,7 +184,6 @@ public class Main {
         try (PreparedStatement ps = con.prepareStatement(sql)) {
             ps.setInt(1, commentId);
             ps.executeUpdate();
-            System.out.println("Deleted comment id=" + commentId);
         }
     }
 }
